@@ -3,7 +3,6 @@ import json
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
-from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -31,19 +30,19 @@ async def analyze_audio(audio_file: UploadFile = File(...)):
         transcript_text = transcription.text
 
         if not transcript_text or len(transcript_text.strip()) < 3:
-            return {"error": "Audio chunk too quiet or empty"}
+            return {"error": "Silence or background noise detected. No actionable speech."}
 
-        system_prompt = """You are a top-tier cybersecurity AI. Analyze this call transcript. 
+        system_prompt = """You are a cybersecurity AI. Analyze this call transcript. 
         Output JSON matching exactly this schema:
         {
             "threat_level": int (0-100), 
-            "scam_type": str (Categorize strictly, e.g., Vishing, Identity Theft, Extortion, Tech Support, Clean), 
+            "scam_type": str, 
             "voice_clone_probability": int (0-100), 
             "psychology": str, 
             "deepfake_indicators": str, 
             "flagged_entities": [str], 
-            "leaked_info": str (What sensitive data or clues did the victim accidentally reveal?), 
-            "custom_mitigation": [str] (Array of 3-4 specific, actionable steps tailored to the leaked info)
+            "leaked_info": str, 
+            "custom_mitigation": [str]
         }"""
 
         chat_completion = client.chat.completions.create(
@@ -55,7 +54,19 @@ async def analyze_audio(audio_file: UploadFile = File(...)):
             response_format={"type": "json_object"}
         )
 
-        analysis = json.loads(chat_completion.choices[0].message.content)
+        try:
+            analysis = json.loads(chat_completion.choices[0].message.content)
+        except:
+            analysis = {
+                "threat_level": 50,
+                "scam_type": "UNKNOWN",
+                "voice_clone_probability": 0,
+                "psychology": "Error parsing AI response.",
+                "deepfake_indicators": "Unknown",
+                "flagged_entities": [],
+                "leaked_info": "Unknown",
+                "custom_mitigation": ["Maintain caution.", "Do not share sensitive data."]
+            }
 
         return {
             "transcript": transcript_text,
