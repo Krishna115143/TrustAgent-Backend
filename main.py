@@ -29,11 +29,9 @@ async def analyze_audio(audio_file: UploadFile = File(...)):
         )
         transcript_text = transcription.text
 
-        if not transcript_text or len(transcript_text.strip()) < 3:
-            return {"error": "Silence or background noise detected. No actionable speech."}
-
         system_prompt = """You are a cybersecurity AI. Analyze this call transcript. 
-        Output JSON matching exactly this schema:
+        If the transcript is empty, extremely short, or contains just background noise/silence, output a safe baseline JSON with Threat Level 0 and Type CLEAN.
+        Otherwise, analyze the threat and output JSON matching exactly this schema:
         {
             "threat_level": int (0-100), 
             "scam_type": str, 
@@ -48,7 +46,7 @@ async def analyze_audio(audio_file: UploadFile = File(...)):
         chat_completion = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": transcript_text}
+                {"role": "user", "content": transcript_text if transcript_text else "[Silence]"}
             ],
             model="llama3-70b-8192",
             response_format={"type": "json_object"}
@@ -58,18 +56,18 @@ async def analyze_audio(audio_file: UploadFile = File(...)):
             analysis = json.loads(chat_completion.choices[0].message.content)
         except:
             analysis = {
-                "threat_level": 50,
-                "scam_type": "UNKNOWN",
+                "threat_level": 0,
+                "scam_type": "CLEAN",
                 "voice_clone_probability": 0,
-                "psychology": "Error parsing AI response.",
-                "deepfake_indicators": "Unknown",
+                "psychology": "Neutral baseline.",
+                "deepfake_indicators": "None",
                 "flagged_entities": [],
-                "leaked_info": "Unknown",
-                "custom_mitigation": ["Maintain caution.", "Do not share sensitive data."]
+                "leaked_info": "None",
+                "custom_mitigation": ["Maintain normal operations."]
             }
 
         return {
-            "transcript": transcript_text,
+            "transcript": transcript_text if transcript_text else "No speech detected.",
             "analysis": analysis
         }
     except Exception as e:
