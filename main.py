@@ -21,8 +21,9 @@ async def analyze_audio(audio_file: UploadFile = File(...)):
     try:
         audio_bytes = await audio_file.read()
         
+        # DYNAMIC FILENAME FIX: Now it accepts .mp4 or .webm properly from frontend
         transcription = client.audio.transcriptions.create(
-            file=("audio.webm", audio_bytes),
+            file=(audio_file.filename, audio_bytes),
             model="whisper-large-v3",
             response_format="json",
             language="en"
@@ -56,14 +57,14 @@ async def analyze_audio(audio_file: UploadFile = File(...)):
             analysis = json.loads(chat_completion.choices[0].message.content)
         except:
             analysis = {
-                "threat_level": 0,
-                "scam_type": "CLEAN",
+                "threat_level": 50,
+                "scam_type": "UNKNOWN",
                 "voice_clone_probability": 0,
-                "psychology": "Neutral baseline.",
-                "deepfake_indicators": "None",
+                "psychology": "Error parsing AI response.",
+                "deepfake_indicators": "Unknown",
                 "flagged_entities": [],
-                "leaked_info": "None",
-                "custom_mitigation": ["Maintain normal operations."]
+                "leaked_info": "Unknown",
+                "custom_mitigation": ["Maintain caution."]
             }
 
         return {
