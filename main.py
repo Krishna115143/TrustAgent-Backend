@@ -49,7 +49,7 @@ async def analyze_audio(audio_file: UploadFile = File(...)):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": transcript_text if transcript_text else "[Silence]"}
             ],
-            model="llama3-70b-8192",
+            model="llama-3.1-70b-versatile",
             response_format={"type": "json_object"}
         )
 
