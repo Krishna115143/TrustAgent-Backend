@@ -17,28 +17,21 @@ app.add_middleware(
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-class ScamAnalysis(BaseModel):
-    threat_level: int
-    scam_type: str
-    voice_clone_probability: int
-    psychology: str
-    deepfake_indicators: str
-    flagged_entities: list[str]
-    leaked_info: str
-    custom_mitigation: list[str]
-
 @app.post("/analyze-audio")
 async def analyze_audio(audio_file: UploadFile = File(...)):
     try:
         audio_bytes = await audio_file.read()
         
         transcription = client.audio.transcriptions.create(
-            file=("chunk.wav", audio_bytes),
+            file=("audio.webm", audio_bytes),
             model="whisper-large-v3",
             response_format="json",
             language="en"
         )
         transcript_text = transcription.text
+
+        if not transcript_text or len(transcript_text.strip()) < 3:
+            return {"error": "Audio chunk too quiet or empty"}
 
         system_prompt = """You are a top-tier cybersecurity AI. Analyze this call transcript. 
         Output JSON matching exactly this schema:
@@ -49,8 +42,8 @@ async def analyze_audio(audio_file: UploadFile = File(...)):
             "psychology": str, 
             "deepfake_indicators": str, 
             "flagged_entities": [str], 
-            "leaked_info": str (What sensitive data or clues did the victim accidentally reveal? Be specific.), 
-            "custom_mitigation": [str] (Array of 3-4 highly specific, actionable steps tailored exactly to what the victim leaked and the scam type)
+            "leaked_info": str (What sensitive data or clues did the victim accidentally reveal?), 
+            "custom_mitigation": [str] (Array of 3-4 specific, actionable steps tailored to the leaked info)
         }"""
 
         chat_completion = client.chat.completions.create(
