@@ -2,7 +2,4 @@ fastapi
 uvicorn
 python-multipart
 groq
-python-dotenv
-librosa
-numpy
-soundfile
+pydantic
